@@ -4,13 +4,13 @@ import netlify from '@astrojs/netlify';
 
 export default defineConfig({
   integrations: [tailwind()],
-  output: 'server',
+  output: 'static',
   adapter: netlify({
-    edgeMiddleware: true // Enable edge middleware for better performance
+    edgeMiddleware: false // Enable edge middleware for better performance
   }),
   vite: {
     ssr: {
-      noExternal: ['@astrojs/netlify']
+      noExternal: []
     }
   }
 });
