@@ -1,0 +1,165 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+
+let error: string | null = null;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const email = data.get('email')?.toString();
+    const password = data.get('password')?.toString();
+    const role = data.get('role')?.toString();
+
+    if (!email || !password || !role) {
+      error = 'Todos los campos son requeridos';
+    } else {
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role, approved')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (!profileData?.approved) {
+          error = 'Tu cuenta está pendiente de aprobación';
+        } else if (profileData.role !== role) {
+          error = `No tienes permisos de ${role}`;
+        } else {
+          return Astro.redirect(`/${role}`);
+        }
+      }
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Error al iniciar sesión';
+  }
+}
+---
+
+<Layout title="Login - COSPEC">
+  <div class="min-h-screen w-full relative overflow-hidden bg-gray-900">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden">
+      <!-- Aurora effect -->
+      <div class="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-500/20 to-blue-400/20 animate-aurora opacity-50"></div>
+      
+      <!-- Rotating gradients -->
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          class="absolute inset-0 animate-wave opacity-30"
+          style={`animation-delay: ${i * 2}s; transform-origin: ${50 + i * 10}% ${50 + i * 10}%;`}
+        >
+          <div class="absolute h-full w-full bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-blue-500/30 blur-3xl"></div>
+        </div>
+      ))}
+
+      <!-- Shimmer effects -->
+      <div class="absolute inset-0">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            class="absolute inset-0 opacity-30"
+            style={`transform: rotate(${i * 72}deg); animation-delay: ${i * 0.5}s;`}
+          >
+            <div class="absolute h-full w-1/3 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent animate-shimmer"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+      <div class="max-w-sm w-full mx-auto">
+        <div class="text-center mb-8 relative">
+          <div class="inline-block">
+            <h1 class="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600 tracking-wider mb-3 animate-float text-glow">
+              COSPEC
+            </h1>
+            <div class="h-0.5 w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse-glow"></div>
+          </div>
+          <span class="block text-2xl font-medium text-blue-300 mt-2">
+            COMUNICACIONES
+          </span>
+        </div>
+
+        <div class="glass rounded-2xl p-8 relative overflow-hidden">
+          <!-- Glass shimmer effect -->
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer"></div>
+
+          <form method="POST" class="space-y-6 relative">
+            {error && (
+              <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 animate-shake">
+                <p class="text-red-400 text-sm">
+                  {error}
+                </p>
+              </div>
+            )}
+
+            <div>
+              <label for="email" class="block text-sm font-medium text-blue-200">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 text-white placeholder-blue-200/50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="tu@email.com"
+                required
+              />
+            </div>
+            
+            <div>
+              <label for="password" class="block text-sm font-medium text-blue-200">
+                Contraseña
+              </label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                class="mt-1 block w-full rounded-md bg-white/10 border border-white/20 text-white placeholder-blue-200/50 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Tu contraseña"
+                required
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <button
+                type="submit"
+                name="role"
+                value="admin"
+                class="w-full py-2.5 px-4 rounded-md bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                Administrador
+              </button>
+
+              <button
+                type="submit"
+                name="role"
+                value="technician"
+                class="w-full py-2.5 px-4 rounded-md glass glass-hover text-blue-300 font-medium transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-blue-500/30"
+              >
+                Técnico
+              </button>
+            </div>
+
+            <div class="text-center">
+              <a
+                href="/signup"
+                class="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium hover:underline"
+              >
+                ¿No tienes una cuenta? Regístrate aquí
+              </a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

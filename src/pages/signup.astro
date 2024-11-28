@@ -1,0 +1,203 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { supabase } from '../lib/supabase';
+
+let error: string | null = null;
+let success = false;
+
+if (Astro.request.method === 'POST') {
+  try {
+    const data = await Astro.request.formData();
+    const email = data.get('email')?.toString();
+    const password = data.get('password')?.toString();
+    const fullName = data.get('fullName')?.toString();
+    const role = data.get('role')?.toString() as 'admin' | 'technician';
+
+    if (!email || !password || !fullName || !role) {
+      error = 'Todos los campos son requeridos';
+    } else {
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (signUpError) throw signUpError;
+
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: authData.user.id,
+              full_name: fullName,
+              role: role,
+              approved: false,
+            }
+          ]);
+
+        if (profileError) throw profileError;
+        success = true;
+      }
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Error al registrarse';
+  }
+}
+---
+
+<Layout title="Registro - COSPEC">
+  <div class="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-gray-900 to-black">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 overflow-hidden">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          class="absolute inset-0 opacity-30"
+          style={`transform: rotate(${i * 72}deg); animation-delay: ${i * 0.5}s;`}
+        >
+          <div class="absolute h-full w-1/3 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent animate-shimmer" />
+        </div>
+      ))}
+    </div>
+
+    <!-- Main content -->
+    <div class="relative z-10 min-h-screen flex flex-col items-center justify-center px-4">
+      <div class="max-w-md w-full mx-auto">
+        <!-- Logo and title -->
+        <div class="text-center mb-12 relative">
+          <div class="inline-block">
+            <h1 class="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600 tracking-wider mb-3 animate-float text-glow">
+              COSPEC
+            </h1>
+            <div class="h-0.5 w-full bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse-glow" />
+          </div>
+          <span class="block text-2xl font-medium text-blue-300 mt-2 tracking-wide">
+            COMUNICACIONES
+          </span>
+        </div>
+
+        {success ? (
+          <div class="glass rounded-2xl p-8 text-center space-y-6">
+            <h2 class="text-2xl font-semibold text-blue-300">¡Registro Exitoso!</h2>
+            <p class="text-blue-200">
+              Tu cuenta ha sido creada y está pendiente de aprobación por un administrador.
+              Te notificaremos por email cuando tu cuenta sea activada.
+            </p>
+            <a
+              href="/"
+              class="inline-block w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium text-center transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              Volver al Login
+            </a>
+          </div>
+        ) : (
+          <div class="glass rounded-2xl p-8 relative overflow-hidden">
+            <!-- Shimmer effect -->
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-shimmer" />
+
+            <form method="POST" class="space-y-6 relative">
+              {error && (
+                <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 animate-shake">
+                  <p class="text-red-400 text-sm">
+                    {error}
+                  </p>
+                </div>
+              )}
+
+              <div class="space-y-2">
+                <label for="fullName" class="block text-sm font-medium text-blue-300">
+                  Nombre Completo
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  name="fullName"
+                  required
+                  class="w-full px-4 py-2.5 rounded-lg glass glass-hover input-glow text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
+                  placeholder="Tu nombre completo"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label for="email" class="block text-sm font-medium text-blue-300">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  class="w-full px-4 py-2.5 rounded-lg glass glass-hover input-glow text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
+                  placeholder="tu@email.com"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label for="password" class="block text-sm font-medium text-blue-300">
+                  Contraseña
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  required
+                  minlength="6"
+                  class="w-full px-4 py-2.5 rounded-lg glass glass-hover input-glow text-white placeholder-blue-300/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all duration-300"
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+
+              <div class="space-y-2">
+                <label class="block text-sm font-medium text-blue-300">
+                  Tipo de Usuario
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                  <label class="relative">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="admin"
+                      class="peer sr-only"
+                      required
+                    />
+                    <div class="w-full py-2.5 px-4 rounded-lg glass glass-hover text-blue-300 font-medium text-center cursor-pointer transition-all duration-300 peer-checked:bg-blue-600 peer-checked:text-white">
+                      Administrador
+                    </div>
+                  </label>
+                  <label class="relative">
+                    <input
+                      type="radio"
+                      name="role"
+                      value="technician"
+                      class="peer sr-only"
+                      required
+                      checked
+                    />
+                    <div class="w-full py-2.5 px-4 rounded-lg glass glass-hover text-blue-300 font-medium text-center cursor-pointer transition-all duration-300 peer-checked:bg-blue-600 peer-checked:text-white">
+                      Técnico
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              >
+                Registrarse
+              </button>
+
+              <div class="text-center">
+                <a
+                  href="/"
+                  class="text-blue-400 hover:text-blue-300 transition-colors text-sm font-medium hover:underline"
+                >
+                  Volver al Login
+                </a>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</Layout>

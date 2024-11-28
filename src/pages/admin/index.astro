@@ -1,0 +1,65 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { supabase } from '../../lib/supabase';
+import UserApprovalList from '../../components/admin/UserApprovalList.astro';
+
+const { cookies, redirect } = Astro;
+
+const accessToken = cookies.get('sb-access-token');
+if (!accessToken) {
+  return redirect('/');
+}
+
+const { data: { user }, error } = await supabase.auth.getUser(accessToken.value);
+if (error || !user) {
+  return redirect('/');
+}
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('role, approved')
+  .eq('id', user.id)
+  .single();
+
+if (!profile?.approved || profile.role !== 'admin') {
+  return redirect('/');
+}
+
+// Get admin name
+const { data: adminProfile } = await supabase
+  .from('profiles')
+  .select('full_name')
+  .eq('id', user.id)
+  .single();
+---
+
+<Layout title="Panel de Administración - COSPEC">
+  <main class="min-h-screen bg-gray-100 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-8">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            Panel de Administración
+          </h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Bienvenido, {adminProfile?.full_name}
+          </p>
+        </div>
+        <form action="/api/logout" method="POST">
+          <button
+            type="submit"
+            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Cerrar Sesión
+          </button>
+        </form>
+      </div>
+
+      <!-- User Approval Section -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+        <UserApprovalList />
+      </div>
+    </div>
+  </main>
+</Layout>
